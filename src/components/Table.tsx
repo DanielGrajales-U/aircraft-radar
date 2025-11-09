@@ -53,7 +53,7 @@ export function Table() {
 
         {/* Tabla de Historial de Colisiones */}
         <div>
-          <h3 className="font-semibold mb-1">Historial de Riesgos:</h3>
+          <h3 className="font-semibold mb-1">Historial de Colisiones:</h3>
           <ul className='flex flex-col gap-1 max-h-[calc((100vh-100px)/2)] overflow-y-auto'> {/* Ajusta altura */}
             {state.collisionHistory.map((item) => {
               const textColor = getTextColor(item.finalCollisionState);
