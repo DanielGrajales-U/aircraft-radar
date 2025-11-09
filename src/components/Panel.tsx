@@ -47,7 +47,7 @@ export function Panel() {
               title={`${aircraft.callsign} (X:${aircraft.x.toFixed(2)}, Y:${aircraft.y.toFixed(2)}, Estado: ${aircraft.collisionState})`}
             >
               <div className="relative inline-block">
-                <span className='absolute top-[-20px]'>{`${aircraft.callsign} `}</span>
+                <span className={`absolute top-[-20px] z-50  text-[${iconColor}]`}>{`${aircraft.callsign} `}</span>
                 <div
                   className="flex items-center justify-center"
                   style={{
