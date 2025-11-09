@@ -24,9 +24,6 @@ export function Panel() {
 
   return (
     <section className='flex-1 relative overflow-hidden'>
-      <h1 className='absolute top-2 left-1/2 transform -translate-x-1/2 text-green-400 font-bold z-10'>
-        Radar de Aviones (Plano Cartesiano)
-      </h1>
 
       {/* Fondo del panel */}
       <div
@@ -105,7 +102,7 @@ export function Panel() {
                 <div
                   className="flex items-center justify-center"
                   style={{
-                    transform: `rotate(${calculateAngle(aircraft.dx, aircraft.dy)}deg)`,
+                    transform: `rotate(${calculateAngle(aircraft.dx, aircraft.dy)-150}deg)`,
                   }}
                 >
                   {aircraft.collisionState === 'collision' ? (
