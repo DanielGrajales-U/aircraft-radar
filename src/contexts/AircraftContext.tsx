@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { PlaneIcon, Skull } from 'lucide-react';
 
 // Definición del tipo para un avión, incluyendo estado de colisión y nueva información
 interface Aircraft {
