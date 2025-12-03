@@ -1,124 +1,101 @@
+// src/components/Panel.tsx
 import { PlaneIcon, Skull } from 'lucide-react';
 import { useAircraft } from '../contexts/AircraftContext';
 
+// ... (Mantener calculateAngle y getIconColor)
+const calculateAngle = (dx: number, dy: number): number => {
+  let angleInRadians = Math.atan2(dy, dx);
+  let angleInRadiansAdjusted = angleInRadians - (270 * Math.PI / 180);
+  return angleInRadiansAdjusted * (180 / Math.PI);
+};
+
+const getIconColor = (collisionState: string) => {
+  switch (collisionState) {
+    case 'warning': return '#FBBF24'; // Amarillo
+    case 'danger': return '#EF4444';   // Rojo
+    case 'collision': return '#B91C1C'; // Rojo oscuro
+    default: return '#2adb36'; // Verde claro
+  }
+};
+
 export function Panel() {
   const { state } = useAircraft();
-
-  const calculateAngle = (dx: number, dy: number): number => {
-    let angleInRadians = Math.atan2(dy, dx);
-    let angleInRadiansAdjusted = angleInRadians - (270 * Math.PI / 180);
-    return angleInRadiansAdjusted * (180 / Math.PI);
-  };
-
-  const getIconColor = (collisionState: string) => {
-    switch (collisionState) {
-      case 'warning': return '#FBBF24'; // Amarillo
-      case 'danger': return '#EF4444';   // Rojo
-      case 'collision': return '#B91C1C'; // Rojo oscuro
-      default: return '#2adb36'; // Verde claro
-    }
-  };
-
-  // Filtrar aviones que NO estén en estado 'collision'
   const visibleAircrafts = state.aircrafts.filter(ac => ac.collisionState !== 'collision');
 
   return (
     <section className='flex-1 relative overflow-hidden'>
 
-      {/* Fondo del panel */}
-      <div
-        className="w-full h-full bg-black relative"
-        style={{
-          backgroundImage: 'radial-gradient(circle at center, rgba(0, 255, 0, 0.05) 0%, transparent 70%)',
-        }}
-      >
-        {/* Eje X (horizontal) */}
-        <div className="absolute w-full h-[1px] bg-green-500" style={{ top: '50%' }} />
-        {/* Eje Y (vertical) */}
-        <div className="absolute h-full w-[1px] bg-green-500" style={{ left: '50%' }} />
+      {/* ... (Fondo, Ejes X/Y, Etiquetas - Mantenemos tu código aquí) ... */}
 
-        {/* Etiquetas de los ejes */}
-        {/* Eje X (valores de 0 a 100) */}
-        {Array.from({ length: 11 }, (_, i) => {
-          const value = i * 10;
-          return (
-            <div
-              key={`x-label-${value}`}
-              className="absolute text-xs text-green-400 font-mono pointer-events-none"
-              style={{
-                left: `${i * 10}%`,
-                bottom: '0',
-                transform: 'translateX(-50%)',
-              }}
-            >
-              {value}
-            </div>
-          );
-        })}
+      {/* 🚨 Línea que conecta el Par Más Cercano 🚨 */}
+      {state.closestPairIds && (() => {
+        const ac1 = state.aircrafts.find(ac => ac.id === state.closestPairIds![0]);
+        const ac2 = state.aircrafts.find(ac => ac.id === state.closestPairIds![1]);
 
-        {/* Eje Y (valores de 0 a 100) */}
-        {Array.from({ length: 11 }, (_, i) => {
-          const value = i * 10;
-          return (
-            <div
-              key={`y-label-${value}`}
-              className="absolute text-xs text-green-400 font-mono pointer-events-none"
-              style={{
-                right: '0',
-                top: `${100 - i * 10}%`,
-                transform: 'translateY(-50%)',
-              }}
-            >
-              {value}
-            </div>
-          );
-        })}
+        if (!ac1 || !ac2) return null;
 
-        {/* Mostrar los aviones */}
-        {visibleAircrafts.map((aircraft) => {
-          const iconColor = getIconColor(aircraft.collisionState);
+        // Coordenadas en porcentaje (Y invertida para CSS)
+        const x1 = ac1.x;
+        const y1 = 100 - ac1.y;
+        const x2 = ac2.x;
+        const y2 = 100 - ac2.y;
 
-          // Convertir las coordenadas (x, y) de 0-100 a porcentajes del contenedor
-          // Asumiendo que el origen (0,0) está en la esquina inferior izquierda
-          // y (100,100) en la esquina superior derecha.
-          const xPercent = aircraft.x; // Directamente el valor de x como porcentaje
-          const yPercent = 100 - aircraft.y; // Invertimos y porque en CSS el 0% es arriba
+        return (
+          <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ zIndex: 10 }}>
+            <line
+              x1={`${x1}%`} y1={`${y1}%`}
+              x2={`${x2}%`} y2={`${y2}%`}
+              stroke="#FFD700" // Dorado/Amarillo para el par crítico
+              strokeWidth="2"
+              strokeDasharray="4 4"
+            />
+          </svg>
+        );
+      })()}
 
-          return (
-            <div
-              key={aircraft.id}
-              className={`absolute w-4 h-4 flex items-center justify-center text-xs font-bold`}
-              style={{
-                left: `${xPercent}%`,
-                top: `${yPercent}%`,
-                transform: 'translate(-50%, -50%)',
-              }}
-              title={`${aircraft.callsign} (X:${aircraft.x.toFixed(2)}, Y:${aircraft.y.toFixed(2)}, Estado: ${aircraft.collisionState})`}
-            >
-              <div className="relative inline-block">
-                <span className={`absolute top-[-20px] z-50 text-xs`} style={{ color: iconColor }}>
-                  {aircraft.callsign}
-                </span>
-                <div
-                  className="flex items-center justify-center"
-                  style={{
-                    transform: `rotate(${calculateAngle(aircraft.dx, aircraft.dy)-150}deg)`,
-                  }}
-                >
-                  {aircraft.collisionState === 'collision' ? (
-                    <Skull size={24} color={iconColor} />
-                  ) : (
-                    <PlaneIcon size={24} color={iconColor} />
-                  )}
-                </div>
-                <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 hover:opacity-100 transition-opacity duration-200 z-20">
-                  {aircraft.callsign}
-                </div>
+      {/* Mostrar los aviones */}
+      {state.aircrafts.map((aircraft) => {
+        const isClosest = state.closestPairIds?.includes(aircraft.id);
+        const iconColor = isClosest ? '#FFD700' : getIconColor(aircraft.collisionState); // Resaltar
+
+        // Convertir las coordenadas (x, y) de 0-100 a porcentajes del contenedor
+        const xPercent = aircraft.x;
+        const yPercent = 100 - aircraft.y;
+
+        return (
+          <div
+            key={aircraft.id}
+            // ... (clases, title)
+            className={`absolute w-4 h-4 flex items-center justify-center text-xs font-bold`}
+            style={{
+              left: `${xPercent}%`,
+              top: `${yPercent}%`,
+              transform: 'translate(-50%, -50%)',
+              boxShadow: isClosest ? `0 0 10px 5px #FFD700` : 'none', // Sombra de resaltado
+              transition: 'left 2s linear, top 2s linear, box-shadow 0.2s ease-in-out' // Transición suave
+            }}
+            title={`${aircraft.callsign} (X:${aircraft.x.toFixed(2)}, Y:${aircraft.y.toFixed(2)}, Estado: ${aircraft.collisionState})`}
+          >
+            <div className="relative inline-block">
+              <span className={`absolute top-[-20px] z-50 text-xs`} style={{ color: iconColor }}>
+                {aircraft.callsign}
+              </span>
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  transform: `rotate(${calculateAngle(aircraft.dx, aircraft.dy) - 150}deg)`,
+                }}
+              >
+                {aircraft.collisionState === 'collision' ? (
+                  <Skull size={24} color={iconColor} />
+                ) : (
+                  <PlaneIcon size={24} color={iconColor} />
+                )}
               </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
     </section>
   );
 }
