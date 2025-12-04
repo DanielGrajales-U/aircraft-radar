@@ -1,9 +1,13 @@
+// src/components/Table.tsx
 import { PlaneIcon, Skull } from 'lucide-react';
-import { useAircraft } from '../contexts/AircraftContext';
+import type { Aircraft, CollisionHistoryItem } from '../types';
 
-export function Table() {
-  const { state } = useAircraft();
+interface TableProps {
+  aircrafts: Aircraft[];
+  collisionHistory: CollisionHistoryItem[];
+}
 
+export function Table({ aircrafts, collisionHistory }: TableProps) {
   const getTextColor = (collisionState: string) => {
     switch (collisionState) {
       case 'warning': return 'text-yellow-500';
@@ -13,68 +17,79 @@ export function Table() {
     }
   };
 
-  // Filtrar aviones que NO estén en estado 'collision' para la tabla principal
-  const activeAircrafts = state.aircrafts.filter(ac => ac.collisionState !== 'collision');
+  const activeAircrafts = aircrafts.filter(ac => ac.collisionState !== 'collision');
 
   return (
-    <section className='w-[300px] p-4'>
-      <div className='border border-main-green w-full p-2'>
-        <h2 className='text-center font-bold text-xl'>Control Aéreo</h2>
+    <section className="w-[300px] p-4 bg-black bg-opacity-80 h-vh">
+      <div className="border border-green-500 w-full p-2 rounded h-[860px]">
+        <h2 className="text-center font-bold text-xl text-green-400">Control Aéreo</h2>
 
-        {/* Tabla de Aviones Activos */}
-        <div className="mb-4">
-          <h3 className="font-semibold mb-1">Aviones Activos:</h3>
-          <ul className='flex flex-col gap-1 max-h-[70%] overflow-y-auto'> {/* Ajusta altura */}
-            {activeAircrafts.map((aircraft) => {
-              const textColor = getTextColor(aircraft.collisionState);
-
-              return (
-                <li
-                  key={aircraft.id}
-                  className={`flex items-center gap-1 ${textColor}`}
-                >
-                  {aircraft.collisionState === 'collision' ? (
-                    <Skull size={16} className={textColor} />
-                  ) : (
-                    <PlaneIcon size={16} className={textColor} />
-                  )}
-                  <div className="flex-1 truncate text-sm">
-                    {aircraft.callsign} <br />
-                    <span className="text-xs">({aircraft.origin} → {aircraft.destination})</span>
-                  </div>
-                  <div className="text-xs text-gray-300">
-                    X:{aircraft.x.toFixed(2)}, Y:{aircraft.y.toFixed(2)}
-                  </div>
-                </li>
-              );
-            })}
+        {/* Aviones Activos */}
+        <div className="mb-4 h-1/2">
+          <h3 className="font-semibold mb-1 text-green-300">Aviones Activos ({activeAircrafts.length}):</h3>
+          <ul className="flex flex-col gap-1 max-h-full overflow-y-auto text-sm">
+            {activeAircrafts.length === 0 ? (
+              <li className="text-gray-500">No hay aviones activos.</li>
+            ) : (
+              activeAircrafts.map((aircraft) => {
+                const textColor = getTextColor(aircraft.collisionState);
+                return (
+                  <li
+                    key={aircraft.id}
+                    className={`flex items-start gap-2 p-1 rounded ${aircraft.collisionState !== 'safe' ? 'bg-red-900 bg-opacity-30' : ''}`}
+                  >
+                    {aircraft.collisionState === 'collision' ? (
+                      <Skull size={16} className={textColor} />
+                    ) : (
+                      <PlaneIcon size={16} className={textColor} />
+                    )}
+                    <div className="flex-1">
+                      <div className="font-mono">{aircraft.callsign}</div>
+                      <div className="text-xs text-gray-400">
+                        {aircraft.origin} → {aircraft.destination}
+                      </div>
+                      <div className="text-xs text-gray-300">
+                        X: {aircraft.x.toFixed(2)}, Y: {aircraft.y.toFixed(2)} | {aircraft.collisionState}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })
+            )}
           </ul>
         </div>
 
-        {/* Tabla de Historial de Colisiones */}
-        <div>
-          <h3 className="font-semibold mb-1">Historial de Colisiones:</h3>
-          <ul className='flex flex-col gap-1 max-h-[calc((100vh-100px)/2)] overflow-y-auto'> {/* Ajusta altura */}
-            {state.collisionHistory.map((item) => {
-              const textColor = getTextColor(item.finalCollisionState);
-
-              return (
-                <li
-                  key={item.id}
-                  className={`flex items-center gap-1 ${textColor}`}
-                >
-                  <Skull size={16} className={textColor} /> {/* Siempre Skull para historial */}
-                  <div className="flex-1 truncate text-sm">
-                    {item.callsign} <br />
-                    <span className="text-xs">({item.origin} → {item.destination}) - {item.finalCollisionState.toUpperCase()}</span>
-                  </div>
-                  <div className="text-xs text-gray-300">
-                    P:{item.passengers}, Piloto: {item.pilotName}
-                  </div>
-                </li>
-              );
-            })}
-            {state.collisionHistory.length === 0 && <li className="text-gray-500 text-sm">No hay incidentes registrados.</li>}
+        {/* Historial de Colisiones */}
+        <div className='mt-10 h-1/2'>
+          <h3 className="font-semibold mb-1 text-red-400">Historial de Colisiones ({collisionHistory.length}):</h3>
+          <ul className="flex flex-col gap-1 max-h-40 overflow-y-auto text-sm">
+            {collisionHistory.length === 0 ? (
+              <li className="text-gray-500">No hay incidentes registrados.</li>
+            ) : (
+              [...collisionHistory]
+                .sort((a, b) => b.timestamp - a.timestamp) // más reciente primero
+                .map((item) => {
+                  const textColor = getTextColor(item.finalCollisionState);
+                  return (
+                    <li
+                      key={item.id}
+                      className={`flex items-start gap-2 p-1 rounded bg-red-900 bg-opacity-20`}
+                    >
+                      <Skull size={16} className={textColor} />
+                      <div className="flex-1">
+                        <div className="font-mono">{item.callsign}</div>
+                        <div className="text-xs text-gray-400">
+                          {item.origin} → {item.destination}
+                        </div>
+                        <div className="text-xs">
+                          <span className={textColor}>{item.finalCollisionState.toUpperCase()}</span> |
+                          {item.passengers} pasajeros | {item.pilotName}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })
+            )}
           </ul>
         </div>
       </div>
