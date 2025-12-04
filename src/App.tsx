@@ -1,20 +1,15 @@
-import './App.css';
 import { Panel } from './components/Panel';
 import { Table } from './components/Table';
-import { AircraftProvider } from './contexts/AircraftContext'; // Importa el proveedor
+import { useAircraftSimulation } from './hooks/useAircraftSimulation';
 
-function App() {
+export default function App() {
+  const { aircrafts, collisionHistory } = useAircraftSimulation();
   return (
-    // Envuelve toda la aplicación (o la parte que lo necesita) con el proveedor
-    <AircraftProvider>
-      <main className='w-[100dvw] h-[100dvh]'>
-        <div className='w-full h-full flex'>
-          <Panel />
-          <Table />
-        </div>
-      </main>
-    </AircraftProvider>
+    <main className="w-[100dvw] h-[100dvh]">
+      <div className="w-full h-full flex">
+        <Panel aircrafts={aircrafts} />
+        <Table aircrafts={aircrafts} collisionHistory={collisionHistory} />
+      </div>
+    </main>
   );
 }
-
-export default App;
