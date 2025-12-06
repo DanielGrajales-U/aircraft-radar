@@ -1,35 +1,33 @@
-// src/components/Table.tsx
 import { PlaneIcon, Skull } from 'lucide-react';
-import type { Aircraft, CollisionHistoryItem } from '../types';
+import { useAircraft } from '../context/AircraftContext';
 
-interface TableProps {
-  aircrafts: Aircraft[];
-  collisionHistory: CollisionHistoryItem[];
-}
+export function Table() {
+  const { state } = useAircraft();
+  const { aircrafts, collisionHistory } = state;
 
-export function Table({ aircrafts, collisionHistory }: TableProps) {
   const getTextColor = (collisionState: string) => {
     switch (collisionState) {
       case 'warning': return 'text-yellow-500';
       case 'danger': return 'text-red-500';
       case 'collision': return 'text-red-700';
-      default: return 'text-white';
+      default: return 'text-green-400';
     }
   };
 
+  // Filtrar aviones que no han colisionado
   const activeAircrafts = aircrafts.filter(ac => ac.collisionState !== 'collision');
 
   return (
-    <section className="w-[300px] p-4 bg-black bg-opacity-80 h-vh">
-      <div className="border border-green-500 w-full p-2 rounded h-[860px]">
-        <h2 className="text-center font-bold text-xl text-green-400">Control Aéreo</h2>
+    <section className="w-[300px] p-4 bg-black bg-opacity-80 flex-shrink-0">
+      <div className="border border-green-500 w-full p-2 rounded h-full flex flex-col">
+        <h2 className="text-center font-bold text-xl text-green-400 mb-4">📡 Control Aéreo</h2>
 
         {/* Aviones Activos */}
-        <div className="mb-4 h-1/2">
-          <h3 className="font-semibold mb-1 text-green-300">Aviones Activos ({activeAircrafts.length}):</h3>
-          <ul className="flex flex-col gap-1 max-h-full overflow-y-auto text-sm">
+        <div className="mb-4 flex-1 overflow-hidden flex flex-col">
+          <h3 className="font-semibold mb-1 text-green-300 border-b border-green-700 pb-1">Aviones Activos ({activeAircrafts.length}):</h3>
+          <ul className="flex flex-col gap-1 overflow-y-auto text-sm pr-1">
             {activeAircrafts.length === 0 ? (
-              <li className="text-gray-500">No hay aviones activos.</li>
+              <li className="text-gray-500 mt-2">No hay aviones activos.</li>
             ) : (
               activeAircrafts.map((aircraft) => {
                 const textColor = getTextColor(aircraft.collisionState);
@@ -38,18 +36,14 @@ export function Table({ aircrafts, collisionHistory }: TableProps) {
                     key={aircraft.id}
                     className={`flex items-start gap-2 p-1 rounded ${aircraft.collisionState !== 'safe' ? 'bg-red-900 bg-opacity-30' : ''}`}
                   >
-                    {aircraft.collisionState === 'collision' ? (
-                      <Skull size={16} className={textColor} />
-                    ) : (
-                      <PlaneIcon size={16} className={textColor} />
-                    )}
+                    <PlaneIcon size={16} className={textColor} />
                     <div className="flex-1">
-                      <div className="font-mono">{aircraft.callsign}</div>
+                      <div className={`font-mono font-bold ${textColor}`}>{aircraft.callsign}</div>
                       <div className="text-xs text-gray-400">
                         {aircraft.origin} → {aircraft.destination}
                       </div>
                       <div className="text-xs text-gray-300">
-                        X: {aircraft.x.toFixed(2)}, Y: {aircraft.y.toFixed(2)} | {aircraft.collisionState}
+                        **X: {aircraft.x.toFixed(2)}, Y: {aircraft.y.toFixed(2)}** | Estado: <span className={textColor}>{aircraft.collisionState.toUpperCase()}</span>
                       </div>
                     </div>
                   </li>
@@ -59,17 +53,21 @@ export function Table({ aircrafts, collisionHistory }: TableProps) {
           </ul>
         </div>
 
+        <hr className="border-green-800 my-4" />
+
         {/* Historial de Colisiones */}
-        <div className='mt-10 h-1/2'>
-          <h3 className="font-semibold mb-1 text-red-400">Historial de Colisiones ({collisionHistory.length}):</h3>
-          <ul className="flex flex-col gap-1 max-h-40 overflow-y-auto text-sm">
+        <div className='flex-1 overflow-hidden flex flex-col'>
+          <h3 className="font-semibold mb-1 text-red-400 border-b border-red-700 pb-1">🚨 Historial de Colisiones ({collisionHistory.length}):</h3>
+          <ul className="flex flex-col gap-1 overflow-y-auto text-sm pr-1">
             {collisionHistory.length === 0 ? (
-              <li className="text-gray-500">No hay incidentes registrados.</li>
+              <li className="text-gray-500 mt-2">No hay incidentes registrados.</li>
             ) : (
               [...collisionHistory]
-                .sort((a, b) => b.timestamp - a.timestamp) // más reciente primero
+                .sort((a, b) => b.timestamp - a.timestamp)
                 .map((item) => {
                   const textColor = getTextColor(item.finalCollisionState);
+                  const time = new Date(item.timestamp).toLocaleTimeString('es-CO');
+
                   return (
                     <li
                       key={item.id}
@@ -77,13 +75,12 @@ export function Table({ aircrafts, collisionHistory }: TableProps) {
                     >
                       <Skull size={16} className={textColor} />
                       <div className="flex-1">
-                        <div className="font-mono">{item.callsign}</div>
+                        <div className={`font-mono font-bold ${textColor}`}>{item.callsign}</div>
                         <div className="text-xs text-gray-400">
-                          {item.origin} → {item.destination}
+                          Piloto: {item.pilotName} ({item.passengers} pax)
                         </div>
-                        <div className="text-xs">
-                          <span className={textColor}>{item.finalCollisionState.toUpperCase()}</span> |
-                          {item.passengers} pasajeros | {item.pilotName}
+                        <div className="text-xs text-gray-300">
+                          **Colisión** a las **{time}**
                         </div>
                       </div>
                     </li>

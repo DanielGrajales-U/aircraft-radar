@@ -1,115 +1,156 @@
-import type { Aircraft } from '../types';
+import { type Point, type Aircraft, toPoint } from '../types';
 
-export interface Point {
-  id: string;
-  x: number;
-  y: number;
-}
+// Distancia euclidiana
+const dist = (p1: Point, p2: Point): number => {
+  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+};
 
-export interface ClosestPairResult {
-  pairs: [Point, Point][];
-  minDistance: number;
-}
+// 1. Caso Base y Fuerza Bruta O(n^2) para n < 4
+const closestPairBruteForce = (P: Point[]): { distance: number, ids: [string, string] } => {
+  let minDistance = Infinity;
+  let closestIds: [string, string] = [P[0].id, P[1].id]; // Inicialización segura
 
-function distance(p1: Point, p2: Point): number {
-  return Math.hypot(p1.x - p2.x, p1.y - p2.y);
-}
-
-function bruteForce(points: Point[]): ClosestPairResult {
-  let minDist = Infinity;
-  const pairs: [Point, Point][] = [];
-
-  for (let i = 0; i < points.length; i++) {
-    for (let j = i + 1; j < points.length; j++) {
-      const d = distance(points[i], points[j]);
-      if (d < minDist - 1e-9) {
-        minDist = d;
-        pairs.length = 0;
-        pairs.push([points[i], points[j]]);
-      } else if (Math.abs(d - minDist) < 1e-9) {
-        pairs.push([points[i], points[j]]);
+  for (let i = 0; i < P.length; i++) {
+    for (let j = i + 1; j < P.length; j++) {
+      const distance = dist(P[i], P[j]);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIds = [P[i].id, P[j].id];
       }
     }
   }
-  return { minDistance: minDist, pairs };
-}
+  return { distance: minDistance, ids: closestIds };
+};
 
-function stripClosest(strip: Point[], delta: number): ClosestPairResult {
-  let minDist = delta;
-  const pairs: [Point, Point][] = [];
+// 2. Combinar (Cálculo en la Banda Central) O(n)
+const closestPairStrip = (strip: Point[], delta: number, currentClosestIds: [string, string]): { distance: number, ids: [string, string] } => {
+  let minDistance = delta;
+  let closestIds = currentClosestIds;
 
+  // La banda ya está ordenada por Y desde el pre-procesamiento
+  // Se recorre, comparando cada punto con los 7 siguientes.
   for (let i = 0; i < strip.length; i++) {
-    for (let j = i + 1; j < strip.length && strip[j].y - strip[i].y < minDist; j++) {
-      const d = distance(strip[i], strip[j]);
-      if (d < minDist - 1e-9) {
-        minDist = d;
-        pairs.length = 0;
-        pairs.push([strip[i], strip[j]]);
-      } else if (Math.abs(d - minDist) < 1e-9) {
-        pairs.push([strip[i], strip[j]]);
+    // En el peor caso, solo se necesitan 7 comparaciones
+    for (let j = i + 1; j < strip.length && (strip[j].y - strip[i].y) < minDistance; j++) {
+      const distance = dist(strip[i], strip[j]);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIds = [strip[i].id, strip[j].id];
       }
     }
   }
-  return { minDistance: minDist, pairs };
-}
+  return { distance: minDistance, ids: closestIds };
+};
 
-function closestRec(Px: Point[], Py: Point[]): ClosestPairResult {
+// 3. Función Recursiva de Dividir y Vencer
+const closestPairRec = (Px: Point[], Py: Point[]): { distance: number, ids: [string, string] } => {
   const n = Px.length;
-  if (n <= 3) return bruteForce(Px);
 
+  // Caso base
+  if (n <= 3) {
+    return closestPairBruteForce(Px);
+  }
+
+  // Dividir: Partición de puntos
   const mid = Math.floor(n / 2);
-  const midpointX = Px[mid].x;
+  const midPoint = Px[mid];
 
-  const Qx = Px.slice(0, mid);
-  const Rx = Px.slice(mid);
+  const PxL = Px.slice(0, mid);
+  const PxR = Px.slice(mid);
 
-  const Qy = Py.filter(p => p.x <= midpointX);
-  const Ry = Py.filter(p => p.x > midpointX);
-
-  const left = closestRec(Qx, Qy);
-  const right = closestRec(Rx, Ry);
-
-  let minDist = Math.min(left.minDistance, right.minDistance);
-  let candidatePairs: [Point, Point][] = [];
-
-  if (left.minDistance < right.minDistance) {
-    candidatePairs = left.pairs;
-  } else if (right.minDistance < left.minDistance) {
-    candidatePairs = right.pairs;
-  } else {
-    candidatePairs = [...left.pairs, ...right.pairs];
-  }
-
-  const strip = Py.filter(p => Math.abs(p.x - midpointX) < minDist);
-  const stripResult = stripClosest(strip, minDist);
-
-  if (stripResult.minDistance < minDist - 1e-9) {
-    minDist = stripResult.minDistance;
-    candidatePairs = stripResult.pairs;
-  } else if (Math.abs(stripResult.minDistance - minDist) < 1e-9) {
-    candidatePairs = [...candidatePairs, ...stripResult.pairs];
-  }
-
-  // Eliminar duplicados
-  const seen = new Set<string>();
-  const uniquePairs: [Point, Point][] = [];
-  for (const [a, b] of candidatePairs) {
-    const key = a.id < b.id ? `${a.id}-${b.id}` : `${b.id}-${a.id}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      uniquePairs.push([a, b]);
+  // Particionar Py de forma eficiente basado en midPoint.x
+  const PyL: Point[] = [];
+  const PyR: Point[] = [];
+  for (const p of Py) {
+    // Asignar el punto central al lado derecho por simplicidad
+    if (p.x < midPoint.x) {
+      PyL.push(p);
+    } else {
+      PyR.push(p);
     }
   }
 
-  return { minDistance: minDist, pairs: uniquePairs };
+  // Conquistar: Llamadas recursivas
+  const { distance: deltaL, ids: idsL } = closestPairRec(PxL, PyL);
+  const { distance: deltaR, ids: idsR } = closestPairRec(PxR, PyR);
+
+  // Combinar: Encontrar el mínimo global (delta)
+  let delta = deltaL;
+  let closestIds = idsL;
+
+  if (deltaR < delta) {
+    delta = deltaR;
+    closestIds = idsR;
+  }
+
+  // Crear la banda central (strip)
+  const strip: Point[] = Py.filter(p => Math.abs(p.x - midPoint.x) < delta);
+
+  // Encontrar el par más cercano dentro de la banda central
+  const stripResult = closestPairStrip(strip, delta, closestIds);
+
+  return stripResult;
+};
+
+// Función principal que pre-procesa y llama al algoritmo
+export const findClosestPair = (points: Point[]): { distance: number, ids: [string, string] | null } => {
+  if (points.length < 2) {
+    return { distance: Infinity, ids: null };
+  }
+
+  // Pre-procesamiento: Ordenar Puntos
+  const Px = [...points].sort((a, b) => a.x - b.x); // Ordenado por X
+  const Py = [...points].sort((a, b) => a.y - b.y); // Ordenado por Y
+
+  const result = closestPairRec(Px, Py);
+
+  // Asegurarse de que el orden de IDs sea canónico para la comparación [id1, id2] donde id1 < id2
+  const canonicalIds: [string, string] = result.ids.sort() as [string, string];
+
+  return { distance: result.distance, ids: canonicalIds };
+};
+
+
+// ---------------------------------------------------------------------------------
+// Función para ser utilizada en el Hook/Reducer
+// ---------------------------------------------------------------------------------
+
+export interface CollisionRiskAnalysis {
+  minDistance: number;
+  newClosestPairIds: [string, string] | null;
+  newCollisionStates: Record<string, Aircraft['collisionState']>;
 }
 
-export function findClosestPairs(aircrafts: Aircraft[]): ClosestPairResult {
-  if (aircrafts.length < 2) return { minDistance: Infinity, pairs: [] };
+export const analyzeCollisionRisk = (activeAircrafts: Aircraft[], DANGER_THRESHOLD: number, WARNING_THRESHOLD: number): CollisionRiskAnalysis => {
+  const points: Point[] = activeAircrafts.map(ac => toPoint(ac));
 
-  const points: Point[] = aircrafts.map(ac => ({ id: ac.id, x: ac.x, y: ac.y }));
-  const Px = [...points].sort((a, b) => a.x - b.x);
-  const Py = [...points].sort((a, b) => a.y - b.y);
+  const { distance: minDistance, ids: newClosestPairIds } = findClosestPair(points);
 
-  return closestRec(Px, Py);
-}
+  const newCollisionStates: Record<string, Aircraft['collisionState']> = {};
+
+  activeAircrafts.forEach(ac => {
+    newCollisionStates[ac.id] = 'safe';
+  });
+
+  if (newClosestPairIds) {
+    const [id1, id2] = newClosestPairIds;
+
+    // Identificar estado de riesgo
+    if (minDistance < DANGER_THRESHOLD) {
+      newCollisionStates[id1] = 'danger';
+      newCollisionStates[id2] = 'danger';
+    } else if (minDistance < WARNING_THRESHOLD) {
+      newCollisionStates[id1] = 'warning';
+      newCollisionStates[id2] = 'warning';
+    }
+  }
+
+  // Asignar el estado a todos los aviones que estén cerca del riesgo (Opcional, pero se mantiene la simplicidad
+  // de solo aplicar el estado de riesgo al par más cercano).
+
+  return {
+    minDistance,
+    newClosestPairIds,
+    newCollisionStates
+  };
+};

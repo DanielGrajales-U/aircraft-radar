@@ -1,15 +1,27 @@
 import { Panel } from './components/Panel';
 import { Table } from './components/Table';
-import { useAircraftSimulation } from './hooks/useAircraftSimulation';
+import { AircraftProvider, useAircraft } from './context/AircraftContext';
 
-export default function App() {
-  const { aircrafts, collisionHistory } = useAircraftSimulation();
+function AppContent() {
+  const { state } = useAircraft();
+
+  const { aircrafts, collisionHistory } = state;
+
   return (
-    <main className="w-[100dvw] h-[100dvh]">
+    <main className="w-[100dvw] h-[100dvh] bg-black text-white font-sans">
       <div className="w-full h-full flex">
-        <Panel aircrafts={aircrafts} />
-        <Table aircrafts={aircrafts} collisionHistory={collisionHistory} />
+        <Panel />
+        <Table />
       </div>
     </main>
+  );
+}
+
+// 💡 El componente App solo se encarga de proveer el contexto
+export default function App() {
+  return (
+    <AircraftProvider>
+      <AppContent />
+    </AircraftProvider>
   );
 }
